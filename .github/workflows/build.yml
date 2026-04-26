@@ -57,10 +57,7 @@ jobs:
       - name: Sign package (Ed25519) and Base64 encode
         run: |
           PKG="nano-${VERSION}-debound.tar.gz"
-
-          # Sign SHA256 hash of tarball (Ed25519)
           openssl dgst -sha256 -sign dpm-ed25519.pem -out nano.sig "$PKG"
-
           SIG_B64=$(base64 -w0 nano.sig)
           echo "SIG_B64=$SIG_B64" >> "$GITHUB_ENV"
 
@@ -68,7 +65,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
-          name: "nano ${{ env.VERSION }} (Debound build)"
+          name: "nano ${{ env.VERSION }} (Debound)"
           files: |
             nano-${{ env.VERSION }}-debound.tar.gz
         env:
@@ -81,19 +78,22 @@ jobs:
 
           mkdir -p packages
 
-          cat > packages/nano.json <<EOF
+          cat > packages/nano.json << 'EOF'
 {
   "name": "nano",
-  "version": "${VERSION}",
+  "version": "__VERSION__",
   "channel": "stable",
   "description": "GNU nano text editor",
-  "url": "https://github.com/debound-linux/nano/releases/download/${VERSION}/nano-${VERSION}-debound.tar.gz",
-  "signature": "${SIG_B64}",
+  "url": "__URL__",
+  "signature": "__SIG__",
   "depends": ["musl", "ncurses"]
 }
 EOF
 
-          # Ensure nano is in index.json
+          sed -i "s/__VERSION__/${VERSION}/g" packages/nano.json
+          sed -i "s#__URL__#https://github.com/debound-linux/nano/releases/download/${VERSION}/nano-${VERSION}-debound.tar.gz#g" packages/nano.json
+          sed -i "s/__SIG__/${SIG_B64}/g" packages/nano.json
+
           if [ ! -f index.json ]; then
             echo '{"packages":[]}' > index.json
           fi
